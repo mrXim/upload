@@ -1,6 +1,5 @@
-* {
-  color: green !important;
-}
-a {
-  font-size: 20px;
+@media screen and (max-width: 768px) {
+  .content-document ul{
+    padding-left: 20px;
+  }
 }
