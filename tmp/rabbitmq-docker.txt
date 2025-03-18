@@ -1,0 +1,48 @@
+# Chạy docker rabbitmq lên - chạy không network
+docker run -it --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:management
+
+# Sau khi run image xong ps kiểm tra lấy containerId của rabbitmq:management và exec
+docker ps
+docker exec -it <rabbitmq:3.12-management containerId> /bin/bash
+
+# exec vào trong chạy bộ lệnh dưới đây để tạo vshost, account, queue
+rabbitmqctl add_vhost app_host
+
+rabbitmqctl add_user app 123456
+rabbitmqctl set_user_tags app administrator
+rabbitmqctl set_permissions -p app_host app ".*" ".*" ".*"
+rabbitmqctl set_permissions -p app_host guest ".*" ".*" ".*"
+
+# rabbitmqctl -p app_host delete_queue ocr_tasks
+# rabbitmqctl -p app_host delete_queue translation_tasks
+# rabbitmqctl -p app_host delete_queue ocr_results
+# rabbitmqctl -p app_host delete_queue translation_results
+
+rabbitmqadmin declare queue --vhost=app_host name=website_wide durable=false
+rabbitmqadmin declare queue --vhost=app_host name=website_deep durable=false
+rabbitmqadmin declare queue --vhost=app_host name=device_wide durable=false
+rabbitmqadmin declare queue --vhost=app_host name=device_deep durable=false
+
+rabbitmqadmin declare queue --vhost=app_host name=device_wide_pc1_input durable=false
+rabbitmqadmin declare queue --vhost=app_host name=device_wide_pc1_result durable=false
+rabbitmqadmin declare queue --vhost=app_host name=device_wide_pc2_input durable=false
+rabbitmqadmin declare queue --vhost=app_host name=device_wide_pc2_result durable=false
+
+rabbitmqadmin declare queue --vhost=app_host name=device_deep_pc1_input durable=false
+rabbitmqadmin declare queue --vhost=app_host name=device_deep_pc1_result durable=false
+
+rabbitmqadmin declare queue --vhost=app_host name=website_deep_pc1_input durable=false
+rabbitmqadmin declare queue --vhost=app_host name=website_deep_pc1_result durable=false
+
+rabbitmqadmin declare queue --vhost=app_host name=website_deep_pc2_input durable=false
+rabbitmqadmin declare queue --vhost=app_host name=website_deep_pc2_result durable=false
+
+rabbitmqctl list_queues name durable
+
+# chạy ứng dụng appapi
+docker run -it --rm --name appapi -p 8080:8080 -e devip=192.168.1.10 appapi:1.0
+docker run -it --rm --name appapi -p 8080:8080 -e ConnectionStrings:App=Server=192.168.1.10;Database=nq09;Uid=app;Pwd=123!@#Qwe -e Ocr:RabbitMq:HostName=192.168.1.10 -e Translation:RabbitMq:HostName=192.168.1.10 -e OcrResult:RabbitMq:HostName=192.168.1.10 -e TranslationResult:RabbitMq:HostName=192.168.1.10 appapi:1.0
+
+# build
+docker rmi -f appapi:1.0
+appapi.bat 1.0
